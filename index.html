@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Anh yêu em Yến 💖</title>
+<style>
+  :root{
+    --bg1:#050507;
+    --bg2:#151517;
+    --txt:#ff77aa;
+    --txt2:#ff4f93;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%; margin:0; font-family: "Dancing Script", cursive;}
+  body{
+    background: linear-gradient(135deg, var(--bg1), var(--bg2));
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--txt);
+  }
+
+  /* Intro button nhỏ */
+  #introBtn{
+    padding:12px 24px;
+    border:2px solid #ff77aa;
+    border-radius:12px;
+    background:rgba(13,13,15,0.8);
+    font-size:20px;
+    cursor:pointer;
+    text-align:center;
+  }
+
+  /* Hidden layers for hearts and words */
+  .hearts, .field{
+    display:none;
+    position:fixed; inset:0; pointer-events:none;
+  }
+
+  /* Floating hearts */
+  .hearts .heart{
+    position:absolute;
+    width:20px; height:20px;
+    opacity:.6;
+    animation:float var(--dur) linear infinite;
+  }
+  .hearts .heart svg{width:100%; height:100%; fill:currentColor;}
+  @keyframes float{to{transform:translateY(-110vh) scale(1.2)}}
+
+  /* Words spawner layer */
+  .field .word{
+    position:absolute;
+    font-weight:700;
+    line-height:1;
+    white-space:nowrap;
+    font-family: "Dancing Script", cursive;
+    background:linear-gradient(90deg, var(--txt), var(--txt2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 4px 12px rgba(0,0,0,.5));
+    animation:popfade var(--dur,2.6s) ease-in-out forwards;
+    transform-origin:center;
+    user-select:none;
+    z-index:3;
+    padding:6px 14px;
+    border:2px solid rgba(255,119,170,0.7);
+    border-radius:20px;
+    background-color:rgba(0,0,0,0.35);
+    font-size:20px !important;
+  }
+  @keyframes popfade{
+    0%{opacity:0; transform:translate(var(--dx,0), var(--dy,0)) scale(.6) rotate(var(--rot,0deg))}
+    12%{opacity:1}
+    70%{opacity:1}
+    100%{opacity:0; transform:translate(calc(var(--dx,0)+0px), calc(var(--dy,0)-28px)) scale(1.08) rotate(var(--rot,0deg))}
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- Clickable intro button -->
+<div id="introBtn">Yến, click vào đây</div>
+
+<!-- Floating hearts layer -->
+<div class="hearts" id="hearts"></div>
+
+<!-- Words appear continuously across screen -->
+<div class="field" id="field" aria-hidden="true"></div>
+
+<script>
+  // ---------- Floating hearts as SVG hearts ----------
+  const colors = ['#ff2d7a','#ff5da8','#ff8fb1','#ff1e75','#ff7aa2'];
+  const hearts = document.getElementById('hearts');
+  const HEART_COUNT = 160;
+  const heartSVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+
+  // ---------- Continuous words spawner ----------
+  const phrases = ['Anh yêu em Yến'];
+  const field = document.getElementById('field');
+  let spawnInterval = 120;
+  let maxOnScreen = 200;
+  let spawner = null;
+
+  function spawn(){
+    if(field.childElementCount > maxOnScreen){ field.firstElementChild?.remove(); }
+    const el = document.createElement('div');
+    el.className='word';
+    el.textContent = phrases[0];
+    const vw = Math.max(360, window.innerWidth);
+    const vh = Math.max(640, window.innerHeight);
+    el.style.left = Math.random()*(vw-140) + 'px';
+    el.style.top = Math.random()*(vh-80) + 'px';
+    el.style.setProperty('--rot',(Math.random()*16-8).toFixed(1)+'deg');
+    el.style.setProperty('--dx',(Math.random()*20-10)+'px');
+    el.style.setProperty('--dy',(Math.random()*20-10)+'px');
+    el.style.setProperty('--dur',( (2200+Math.random()*2200)/1000 )+'s');
+    field.appendChild(el);
+    el.addEventListener('animationend',()=>el.remove());
+  }
+
+  function startSpawner(){ if(spawner) return; spawner=setInterval(spawn,spawnInterval);} 
+  function stopSpawner(){ clearInterval(spawner); spawner=null; }
+
+  // ---------- Web Audio ----------
+  let ctx,gMaster; let playing=false; let loopID=null;
+  function noteFreq(n){return 440*Math.pow(2,n/12);} 
+  const chords=[[ -9,-5,-2],[ -2,-7,-10],[ -5,-1,2],[ -7,-3,0]];
+  function playChord(time,chord){
+    const dur=0.45;
+    chord.forEach((semi,i)=>{
+      const t=time+i*0.15;
+      const o=ctx.createOscillator();
+      const g=ctx.createGain();
+      o.type='sine';o.frequency.value=noteFreq(semi);
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.18,t+0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+      o.connect(g).connect(gMaster);
+      o.start(t);o.stop(t+dur+0.05);
+    });
+  }
+  async function startMusic(){
+    if(playing) return;
+    if(!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)();
+    await ctx.resume();
+    gMaster = gMaster || ctx.createGain();
+    gMaster.connect(ctx.destination);
+    gMaster.gain.value = 0.6;
+    let bar=0;
+    function schedule(){
+      const now=ctx.currentTime;
+      for(let i=0;i<4;i++){playChord(now+i*0.8,chords[(bar+i)%chords.length]);}
+      bar=(bar+4)%chords.length;
+    }
+    schedule();
+    loopID=setInterval(schedule,3200);
+    playing=true;
+  }
+
+  // ---------- Click intro button to start everything ----------
+  const introBtn = document.getElementById('introBtn');
+  introBtn.addEventListener('click', async ()=>{
+    await startMusic();
+
+    // Show hearts and words
+    hearts.style.display='block';
+    field.style.display='block';
+
+    // Spawn hearts
+    for(let i=0;i<HEART_COUNT;i++){
+      const h=document.createElement('div');
+      h.className='heart';
+      h.style.left = (Math.random()*100)+'vw';
+      h.style.bottom = (-10 - Math.random()*40)+'vh';
+      h.style.setProperty('color', colors[i%colors.length]);
+      h.style.setProperty('--dur', (10 + Math.random()*12)+'s');
+      h.innerHTML = heartSVG;
+      hearts.appendChild(h);
+    }
+
+    // Start words spawner
+    startSpawner();
+
+    // Hide intro button
+    introBtn.style.display='none';
+  });
+</script>
+</body>
+</html>
